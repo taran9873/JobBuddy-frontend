@@ -6,13 +6,18 @@ import { toast } from "sonner";
  */
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000/api';
 
-// Handle path differences between old and new backend
+// Handle path differences between different backends
 const formatApiPath = (path: string) => {
-  // If using backend-mean (port 3000), just use the normal API path
-  if (API_URL.includes('3000')) {
-    return `${API_URL}${path}`;
+  // If path doesn't start with /, add it
+  const formattedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  // If the API_URL already includes '/api', don't add it again
+  if (API_URL.endsWith('/api')) {
+    return `${API_URL}${formattedPath}`;
   }
-  return `${API_URL}${path}`;
+  
+  // For deployed environments like Render where the URL doesn't include '/api'
+  return `${API_URL}/api${formattedPath}`;
 };
 
 console.log('Using API URL:', API_URL);
