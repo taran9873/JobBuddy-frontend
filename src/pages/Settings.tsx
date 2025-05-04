@@ -9,10 +9,12 @@ import { Mail, User, Server, Key, ShieldAlert, ArrowLeft, FileText } from 'lucid
 import { useEmailSettingsStore, EmailTemplates } from '@/store/emailSettingsStore';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import TemplatesManager from '@/components/email-templates/TemplatesManager';
 
 const Settings = () => {
   // Get email settings from the store
   const { settings, updateSettings } = useEmailSettingsStore();
+  const [activeTab, setActiveTab] = useState('smtp');
   
   // Initialize form state with current settings
   const [formData, setFormData] = useState({
@@ -48,6 +50,11 @@ Thank you for your time and consideration.
 Best regards,
 {senderName}`
   });
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
   
   // Handle form field changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +130,12 @@ Best regards,
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Left Rail Navigation */}
         <Card className="md:col-span-1">
-          <Tabs defaultValue="smtp" className="w-full" orientation="vertical">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={handleTabChange}
+            className="w-full" 
+            orientation="vertical"
+          >
             <TabsList className="flex flex-col items-stretch h-auto p-0 bg-transparent">
               <TabsTrigger 
                 value="smtp" 
@@ -144,6 +156,13 @@ Best regards,
                 className="justify-start text-left px-4 py-3 data-[state=active]:bg-muted"
               >
                 <FileText className="h-4 w-4 mr-2" />
+                Default Templates
+              </TabsTrigger>
+              <TabsTrigger 
+                value="template-manager" 
+                className="justify-start text-left px-4 py-3 data-[state=active]:bg-muted"
+              >
+                <FileText className="h-4 w-4 mr-2" />
                 Email Templates
               </TabsTrigger>
             </TabsList>
@@ -152,7 +171,7 @@ Best regards,
         
         {/* Content Area */}
         <Card className="md:col-span-3">
-          <Tabs defaultValue="smtp" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             {/* SMTP Settings */}
             <TabsContent value="smtp" className="m-0">
               <CardContent className="p-6">
@@ -288,12 +307,12 @@ Best regards,
               </CardContent>
             </TabsContent>
 
-            {/* Email Templates */}
+            {/* Default Email Templates */}
             <TabsContent value="templates" className="m-0">
               <CardContent className="p-6">
                 <h2 className="text-2xl font-semibold mb-6 flex items-center">
                   <FileText className="h-5 w-5 mr-2" />
-                  Email Templates
+                  Default Email Templates
                 </h2>
                 
                 <form onSubmit={handleTemplatesSubmit} className="space-y-6">
@@ -330,9 +349,16 @@ Best regards,
                   </div>
                   
                   <Button type="submit" className="mt-6">
-                    Save Email Templates
+                    Save Default Templates
                   </Button>
                 </form>
+              </CardContent>
+            </TabsContent>
+            
+            {/* Template Manager */}
+            <TabsContent value="template-manager" className="m-0">
+              <CardContent className="p-6">
+                <TemplatesManager />
               </CardContent>
             </TabsContent>
           </Tabs>

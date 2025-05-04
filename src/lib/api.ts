@@ -4,7 +4,7 @@ import { toast } from "sonner";
  * Base API URL for backend services
  * Use environment variable if available, otherwise default to localhost
  */
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8081/api';
 
 // Handle path differences between different backends
 const formatApiPath = (path: string) => {
