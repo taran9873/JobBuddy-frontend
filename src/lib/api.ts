@@ -1,10 +1,17 @@
 import { toast } from "sonner";
+import { useAuthStore } from '@/store/authStore';
 
 /**
  * Base API URL for backend services
  * Use environment variable if available, otherwise default to localhost
  */
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8081/api';
+
+// Helper to get the current auth token
+const getAuthToken = (): string | null => {
+  const authState = useAuthStore.getState();
+  return authState.tokens?.accessToken || null;
+};
 
 // Handle path differences between different backends
 const formatApiPath = (path: string) => {
@@ -51,13 +58,20 @@ export const checkApiHealth = async (): Promise<boolean> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+    };
+    
+    // Add auth token if available
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(formatApiPath('/health'), {
       signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      method: 'GET'
+      method: 'GET',
+      headers
     });
     
     clearTimeout(timeoutId);
@@ -173,13 +187,22 @@ export const applicationsApi = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
+      // Get authentication token
+      const token = getAuthToken();
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      
+      // Add auth token if available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(url, {
         signal: controller.signal,
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
+        headers
       });
       
       clearTimeout(timeoutId);
@@ -251,6 +274,7 @@ export const applicationsApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
         body: JSON.stringify(applicationData),
       });
@@ -313,6 +337,7 @@ export const applicationsApi = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
         body: JSON.stringify(updates),
       });
@@ -466,12 +491,13 @@ export const applicationsApi = {
       console.log(`Final application ID for follow-up settings update: ${finalId}`);
       console.log(`API URL being used: ${formatApiPath(`/applications/${finalId}`)}`);
       
-      const response = await fetch(formatApiPath(`/applications/${finalId}`), {
+      const response = await fetch(formatApiPath(`/applications/${finalId}/followup-settings`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
-        body: JSON.stringify({ follow_up_settings: settings }),
+        body: JSON.stringify(settings),
       });
       
       console.log("Follow-up settings update response:", response);
@@ -522,6 +548,7 @@ export const applicationsApi = {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         }
       });
       
@@ -548,6 +575,46 @@ export const applicationsApi = {
       }
     } catch (error) {
       return handleApiError(error, "Failed to load application", null);
+    }
+  },
+  
+  // Delete a job application
+  delete: async (applicationId: string): Promise<boolean> => {
+    try {
+      // Handle potential MongoDB ObjectId structure
+      let finalId = applicationId;
+      
+      // If applicationId is an object
+      if (typeof applicationId === 'object') {
+        const objectId = applicationId as any;
+        if (objectId._id) {
+          finalId = objectId._id;
+        } else if (objectId.$oid) {
+          finalId = objectId.$oid;
+        } else {
+          console.error("Invalid application ID object:", objectId);
+          throw new Error("Invalid application ID");
+        }
+      }
+      
+      console.log(`Deleting application ${finalId}`);
+      
+      const response = await fetch(formatApiPath(`/applications/${finalId}`), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete application: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      return handleApiError(error, "Failed to delete job application", false);
     }
   }
 };
@@ -587,7 +654,11 @@ export const followUpsApi = {
         params.append('sort_order', '-1');
       }
       
-      const response = await fetch(`${formatApiPath('/followups')}?${params.toString()}`);
+      const response = await fetch(`${formatApiPath('/followups')}?${params.toString()}`, {
+        headers: {
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
+        }
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch follow-ups: ${response.status} ${response.statusText}`);
@@ -632,6 +703,7 @@ export const followUpsApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
         body: JSON.stringify(followUp),
       });
@@ -654,6 +726,7 @@ export const followUpsApi = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
         body: JSON.stringify({ status }),
       });
@@ -706,6 +779,7 @@ export const emailApi = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
         body: JSON.stringify(data),
       });

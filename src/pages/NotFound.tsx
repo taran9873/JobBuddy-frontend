@@ -19,7 +19,7 @@ const NotFound = () => {
         <h1 className="text-6xl font-bold mb-4 text-primary">404</h1>
         <p className="text-xl text-muted-foreground mb-6">Oops! The page you're looking for doesn't exist.</p>
         <Button variant="default" asChild>
-          <Link to="/" className="flex items-center justify-center">
+          <Link to="/home" className="flex items-center justify-center">
             <MoveLeft className="h-4 w-4 mr-2" /> Return to Home
           </Link>
         </Button>
