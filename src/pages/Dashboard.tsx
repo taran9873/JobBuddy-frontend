@@ -120,7 +120,7 @@ const Dashboard = () => {
         return checkApi(retries - 1, delay);
       } else {
         setApiStatus('error');
-        toast.error("API Connection Error! The backend API is not responding. Please check if the server is running.");
+        toast.error("API Connection Error! The backend API is not responding correctly. Please check if the server is running.");
         return false;
       }
     } catch (error) {
@@ -133,7 +133,12 @@ const Dashboard = () => {
         return checkApi(retries - 1, delay);
       } else {
         setApiStatus('error');
-        toast.error("API Connection Error! The backend API is not responding. Please check if the server is running.");
+        // Provide a more specific error message if possible
+        if (error instanceof Error) {
+          toast.error(`API Connection Error: ${error.message}`);
+        } else {
+          toast.error("API Connection Error! The backend API is not responding. Please check if the server is running.");
+        }
         return false;
       }
     }

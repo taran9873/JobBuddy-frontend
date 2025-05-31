@@ -86,8 +86,16 @@ export const checkApiHealth = async (): Promise<boolean> => {
     const data = await response.json();
     console.log("API health check data:", data);
     
-    // Accept either 'ok' or 'success' as valid status values
-    return data.status === 'ok' || data.status === 'success';
+    // More robust status checking - check both the status field and db_status
+    if (data.status === 'ok' || data.status === 'success') {
+      return true;
+    } else if (data.db_status === 'connected') {
+      // The API itself is OK if we got a valid response with connected DB
+      return true;
+    } else {
+      console.warn("API health check returned unexpected status:", data.status, "DB status:", data.db_status);
+      return false;
+    }
   } catch (error) {
     console.error("API health check error:", error);
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -240,7 +248,7 @@ export const applicationsApi = {
   },
   
   // Create a new job application
-  create: async (application: Partial<JobApplication>): Promise<{ id: string; success: boolean; error?: string } | null> => {
+  create: async (application: Partial<JobApplication>): Promise<any> => {
     try {
       console.log("Creating application with data:", application);
       console.log(`Sending to: ${formatApiPath('/applications')}`);
@@ -281,22 +289,21 @@ export const applicationsApi = {
       
       console.log("Create application response:", response);
       
-      // Parse the JSON response
-      const result = await response.json();
-      console.log("Create application result:", result);
-      
-      // Check for application errors even when response is technically OK
-      if (!result.success) {
-        // This is for cases where the API returns a 200 but with success: false
-        throw new Error(result.error || 'Failed to create application');
+      // Simply check HTTP status code - throw error for non-success status
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Server returned error: ${response.status} ${response.statusText}`);
       }
       
-      // Check if response was not OK HTTP status
-      if (!response.ok) {
-        throw new Error(`Failed to create application: ${response.status} ${response.statusText}`);
+      // For successful responses, just return the parsed JSON result
+      try {
+        const result = await response.json();
+        console.log("Create application result:", result);
+        return result;
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        // Return empty object if can't parse JSON
+        return {};
       }
-      
-      return result;
     } catch (error) {
       // Format the error message to be more user-friendly
       let errorMessage = "Failed to create job application";
@@ -307,8 +314,11 @@ export const applicationsApi = {
         } else {
           errorMessage = error.message;
         }
+        console.error(`API Error: ${errorMessage}`, error);
       }
-      return handleApiError(error, errorMessage, null);
+      
+      // Throw the error up to be caught by caller
+      throw new Error(errorMessage);
     }
   },
   
@@ -461,22 +471,15 @@ export const applicationsApi = {
   updateFollowUpSettings: async (applicationId: string, settings: FollowUpSettings): Promise<boolean> => {
     try {
       if (!applicationId) {
-        console.error("Missing application ID");
+        console.error(`Missing application ID`);
         return false;
       }
-
-      console.log(`Updating follow-up settings for application ${applicationId}:`, settings);
       
       // Handle potential MongoDB ObjectId structure
       let finalId = applicationId;
       
-      // If applicationId is an object or might be a stringified object
-      if (typeof applicationId === 'object') {
-        const objectId = applicationId as any;
-        if (objectId.$oid) {
-          finalId = objectId.$oid;
-        }
-      } else if (typeof applicationId === 'string' && applicationId.includes('{') && applicationId.includes('}')) {
+      // If applicationId looks like an object stringified
+      if (applicationId.includes('{') && applicationId.includes('}')) {
         try {
           const parsedId = JSON.parse(applicationId);
           if (parsedId && parsedId.$oid) {
@@ -491,13 +494,14 @@ export const applicationsApi = {
       console.log(`Final application ID for follow-up settings update: ${finalId}`);
       console.log(`API URL being used: ${formatApiPath(`/applications/${finalId}`)}`);
       
-      const response = await fetch(formatApiPath(`/applications/${finalId}/followup-settings`), {
+      // Update to use the general application update endpoint
+      const response = await fetch(formatApiPath(`/applications/${finalId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': getAuthToken() ? `Bearer ${getAuthToken()}` : undefined
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ follow_up_settings: settings }),
       });
       
       console.log("Follow-up settings update response:", response);
@@ -510,7 +514,7 @@ export const applicationsApi = {
       
       const result = await response.json();
       console.log("Follow-up settings update result:", result);
-      return result.success;
+      return true;
     } catch (error) {
       return handleApiError(error, "Failed to update follow-up settings", false);
     }

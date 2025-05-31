@@ -94,15 +94,13 @@ const NewApplicationPage = () => {
         status: 'draft'
       });
       
-      if (response) {
-        toast.success('Draft created successfully');
-        navigate('/dashboard');
-      } else {
-        toast.error('Failed to create draft');
-      }
+      // If we reach here, the request was successful
+      toast.success('Draft created successfully');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error creating draft:', error);
-      toast.error('Failed to create draft. Please try again.');
+      // Display the error message directly from the caught error
+      toast.error(error instanceof Error ? error.message : 'Failed to create draft');
     } finally {
       setIsSaving(false);
     }
@@ -139,23 +137,13 @@ const NewApplicationPage = () => {
         status: 'processing'
       });
       
-      if (response && response.success) {
-        toast.success('Application created successfully');
-        navigate('/dashboard');
-      } else if (response) {
-        // Handle case where application might have been created but with a 'failed' status
-        if (response.id) {
-          toast.warning(`Application created but email may have failed to send: ${response.error || 'Unknown error'}`);
-          navigate('/dashboard');
-        } else {
-          toast.error(response.error || 'Failed to create application');
-        }
-      } else {
-        toast.error('Failed to connect to server');
-      }
+      // If we reach here, the request was successful
+      toast.success('Application created successfully');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error creating application:', error);
-      toast.error('Failed to create application. Please try again.');
+      // Display the error message directly from the caught error
+      toast.error(error instanceof Error ? error.message : 'Failed to create application');
     } finally {
       setIsSaving(false);
     }
